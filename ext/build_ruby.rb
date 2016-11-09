@@ -9,11 +9,11 @@ tmp = "/tmp/"
 require 'fileutils'
 require 'rbconfig'
 
-def execute(command)    
+def execute(command)
   puts command
   unless system(command)
     puts "Failed: #{command.inspect}"
-    exit -1 
+    exit -1
   end
 end
 
@@ -56,23 +56,23 @@ else
           puts "** Patch Ruby"
           execute("patch -p1 < '#{source_dir}/ruby-1.8.7.patch'")
 
-          env = Config::CONFIG.map do |key, value|
+          env = RbConfig::CONFIG.map do |key, value|
             "#{key}=#{value.inspect}" if key.upcase == key and value
-          end.compact.join(" ")            
+          end.compact.join(" ")
 
           puts "** Configure"
-          
-          args = Config::CONFIG['configure_args']
+
+          args = RbConfig::CONFIG['configure_args']
           args.sub("'--enable-shared'", "")
           args << " --disable-shared"
-          args << " --enable-valgrind" if which("valgrind")          
+          args << " --enable-valgrind" if which("valgrind")
           execute("env #{env} ./configure #{args}")
 
           puts "Patch Makefile"
           # FIXME Why is this necessary?
           makefile = File.read('Makefile')
           %w{arch sitearch sitedir}.each do | key |
-            makefile.gsub!(/#{key} = .*/, "#{key} = #{Config::CONFIG[key]}")
+            makefile.gsub!(/#{key} = .*/, "#{key} = #{RbConfig::CONFIG[key]}")
           end
           File.open('Makefile', 'w'){|f| f.puts(makefile)}
 
@@ -87,20 +87,20 @@ else
           }
           config_h = File.read('config.h')
           constants.each do | const, key |
-            config_h.gsub!(/#define #{const} .*/, "#define #{const} \"#{Config::CONFIG[key]}\"")
+            config_h.gsub!(/#define #{const} .*/, "#define #{const} \"#{RbConfig::CONFIG[key]}\"")
           end
-          File.open('config.h', 'w') do |f| 
+          File.open('config.h', 'w') do |f|
             f.puts(config_h)
           end
-          
+
           puts "** Make"
           execute("env #{env} make")
 
-          bleak_binary = "#{Config::CONFIG['bindir']}/ruby-bleak-house"
-          ruby_binary = Config::CONFIG["RUBY_INSTALL_NAME"] || "ruby"
+          bleak_binary = "#{RbConfig::CONFIG['bindir']}/ruby-bleak-house"
+          ruby_binary = RbConfig::CONFIG["RUBY_INSTALL_NAME"] || "ruby"
 
           puts "** Install binary"
-          raise unless File.exist? ruby_binary          
+          raise unless File.exist? ruby_binary
           File.delete bleak_binary if File.exist? bleak_binary # Avoid "Text file busy" error
           exec("cp ./#{ruby_binary} #{bleak_binary}; chmod 755 #{bleak_binary}")
         end
